@@ -49,16 +49,26 @@ def clean_data(df):
     df = pd.concat([df, categories], axis=1)
 
     # Clean the related data (cp. https://knowledge.udacity.com/questions/64417)
-    df[df['related']==2] = 0;
+    df[df['related']==2] = 0
+
+    # Remove some data errors
+    df.drop(df[df['message'].str.len()<10].index, inplace=True)
+    df.drop(df[df['id']==0].index, inplace=True)
 
     # drop duplicates
     df.drop_duplicates(inplace=True)
+
+    # drop columns with only one value
+    for col in df.columns:
+        if len(df[col].unique()) == 1:
+            df.drop(col, inplace=True, axis=1)
+
     print(df.head())
     return df
 
 def save_data(df, database_filename):
     engine = create_engine('sqlite:///{}'.format(database_filename))
-    df.to_sql('message', engine, index=False, if_exists='replace')
+    df.to_sql('Message', engine, index=False, if_exists='replace')
 
 
 def main():
@@ -72,7 +82,7 @@ def main():
 
         print('Cleaning data...')
         df = clean_data(df)
-        
+
         print('Saving data...\n    DATABASE: {}'.format(database_filepath))
         save_data(df, database_filepath)
         
