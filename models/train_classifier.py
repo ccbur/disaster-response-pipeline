@@ -76,15 +76,10 @@ def load_data(database_filepath):
 
     # load data from database
     engine = create_engine('sqlite:///{}'.format(database_filepath))
-    print(pd.read_sql('SELECT name FROM sqlite_master WHERE type =\'table\'', engine))
 
     df = pd.read_sql('SELECT * FROM Message', engine)
     X = df[['message', 'genre']]
-    #X = df['message'].values
     Y_df = df.drop(columns = ['id', 'message', 'original', 'genre'])
-    for col in Y_df:
-        print("Features: {}", col)
-        print(Y_df[col].unique())
     Y = Y_df.values
     return X, Y, Y_df.columns
 
@@ -102,7 +97,7 @@ def build_model():
     # RandomForestClassifier:       0.9 / 0.939
     # GradientBoostingClassifier:   0.9 / 0.939
     # LinearSVC:                    0.9 / 0.943
-    # LinearSVC:                    0.2 / 0.949
+    # LinearSVC:                    0.2 / 0.950
     pipeline = Pipeline([
         ('ctf', ColumnTransformer(transformers=[
             ('text_pipeline', Pipeline([
@@ -116,35 +111,17 @@ def build_model():
 #        ('clf', MultiOutputClassifier(GradientBoostingClassifier(random_state = 314159)))
     ])
 
-    parameters_full = {
-        'ctf__text_pipeline__vect__max_df': (0.5, 1.0), # Best: 0.5, Default: 1.0
-        'ctf__text_pipeline__vect__ngram_range': ((1, 2), (1, 1)), # Best: (1, 2), Default: (1, 1)
-        'ctf__text_pipeline__vect__max_features': (None, 5000), # Best: None, Default: None
-        'ctf__text_pipeline__tfidf__use_idf': (True, False), # Best: True, Default: True
-        'clf__estimator__n_estimators': (30, 50, 100), # Best: 50, Default: 100
-        'clf__estimator__min_samples_split': (2, 4), # Best: 2, Default: 2
-        'ctf__transformer_weights': (
-            {'text_pipeline': 1.0, 'genre_cat': 0.0}, # Best -> genre_cat not needed
-            {'text_pipeline': 1.0, 'genre_cat': 0.5},
-            {'text_pipeline': 1.0, 'genre_cat': 1.0},
-            {'text_pipeline': 0.5, 'genre_cat': 1.0},
-            {'messatext_pipelinege_feat': 0.0, 'genre_cat': 1.0},
-        ),
-    }
-
     parameters = {
-        'ctf__text_pipeline__vect__max_df': (0.5, ), # Best: 0.5, Default: 1.0
-        'ctf__text_pipeline__vect__ngram_range': ((1, 2), ), # Best: (1, 2), Default: (1, 1)
-        'ctf__text_pipeline__vect__max_features': (None, ), # Best: None, Default: None
-        'ctf__text_pipeline__tfidf__use_idf': (True, ), # Best: True, Default: True
-#        'clf__estimator__n_estimators': (50, ), # Best: 50, Default: 100
-#        'clf__estimator__min_samples_split': (2, ), # Best: 2, Default: 2
+        'ctf__text_pipeline__vect__max_df': (0.5, 1.0), # Best: 0.5, Default: 1.0
+        'ctf__text_pipeline__vect__ngram_range': ((1, 2), (1, 1) ), # Best: (1, 1)
+        'ctf__text_pipeline__vect__ngram_range': ((1, 1), ), # Best: (1, 1)
+        'ctf__text_pipeline__tfidf__use_idf': (True, False), # Best: True, Default: True
+        'clf__estimator__C': (0.1, 1, 10), # Best: 1, Default: 1
         'ctf__transformer_weights': (
             {'text_pipeline': 1.00, 'genre_cat': 0.00},
             {'text_pipeline': 0.90, 'genre_cat': 0.10},
-            {'text_pipeline': 0.90, 'genre_cat': 0.15},
             {'text_pipeline': 0.80, 'genre_cat': 0.20}, # Best
-            {'text_pipeline': 0.75, 'genre_cat': 0.25},
+            {'text_pipeline': 0.70, 'genre_cat': 0.30},
         ),
     }
     cv = GridSearchCV(pipeline, param_grid=parameters, n_jobs=-1, verbose=2)
@@ -176,10 +153,7 @@ def evaluate_model(model, X_test, Y_test, category_names):
     '''
     Y_pred = model.predict(X_test)
 
-    #confusion_mat = confusion_matrix(Y_test, Y_pred, labels=labels)
     accuracy = (Y_pred == Y_test).mean()
-
-    #print("Confusion Matrix:\n", confusion_mat)
     print("Accuracy:", accuracy)
 
     for i in range(len(Y_pred[0])):
