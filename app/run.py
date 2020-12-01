@@ -34,28 +34,21 @@ from sklearn.preprocessing import OneHotEncoder
 url_regex = 'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
 email_regex = '(?:[a-z0-9!#$%&\'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&\'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])'
 stop_words = stopwords.words("english")
-
-#class StartingVerbExtractor(BaseEstimator, TransformerMixin):
-#    def starting_verb(self, text):
-#        sentence_list = nltk.sent_tokenize(text)
-#        for sentence in sentence_list:
-#            pos_tags = nltk.pos_tag(tokenize(sentence))
-#            first_word, first_tag = pos_tags[0]
-#            if first_tag in ['VB', 'VBP'] or first_word == 'RT':
-#                return True
-#        return False
-#
-#    def fit(self, x, y=None):
-#        return self
-#
-#    def transform(self, X):
-#        X_tagged = pd.Series(X).apply(self.starting_verb)
-#        return pd.DataFrame(X_tagged)
-
+genres = ['direct', 'news', 'social']
 
 app = Flask(__name__)
 
 def tokenize(text):
+    '''
+    INPUT
+    text - String of text
+
+    OUTPUT
+    clean_tokens - Array with clean tokens
+
+    Normalize and tokenize distaster messages
+    IMPORTANT: This method needs to be the same as during the training of the model!
+    '''
     print("tokenize: {}".format(text))
     detected_urls = re.findall(url_regex, text)
     for url in detected_urls:
@@ -92,13 +85,16 @@ model = joblib.load("../models/classifier.pkl")
 def index():
     
     # extract data needed for visuals
-    # TODO: Below is an example - modify to extract data for your own visuals
     genre_counts = df.groupby('genre').count()['message']
     genre_names = list(genre_counts.index)
     
+    df_categories = df.drop(columns = ['id', 'message', 'original', 'genre'])
+    category_names = df_categories.columns
+    category_boolean = (df_categories != 0).sum().values
+
     # create visuals
-    # TODO: Below is an example - modify to create your own visuals
     graphs = [
+        # genre
         {
             'data': [
                 Bar(
@@ -116,6 +112,26 @@ def index():
                     'title': "Genre"
                 }
             }
+        },
+        # categories
+        {
+            'data': [
+                Bar(
+                    x=category_names,
+                    y=category_boolean
+                )
+            ],
+
+            'layout': {
+                'title': 'Distribution of Message Categories',
+                'yaxis': {
+                    'title': "Count"
+                },
+                'xaxis': {
+                    'title': "Category",
+                    'categoryorder':'total descending'
+                }
+            }
         }
     ]
     
@@ -124,7 +140,7 @@ def index():
     graphJSON = json.dumps(graphs, cls=plotly.utils.PlotlyJSONEncoder)
     
     # render web page with plotly graphs
-    return render_template('master.html', ids=ids, graphJSON=graphJSON)
+    return render_template('master.html', ids=ids, genres=genres, graphJSON=graphJSON)
 
 
 # web page that handles user query and displays model results
@@ -132,16 +148,20 @@ def index():
 def go():
     # save user input in query
     query = request.args.get('query', '') 
+    genre = request.args.get('genre', '') 
     print("query: {}".format(query))
+    print("genre: {}".format(genre))
 #    print("token: {}".format(tokenize(query)))
     # use model to predict classification for query
-    classification_labels = model.predict(pd.DataFrame(data={'message': [query], 'genre': ['direct']}))[0] #  ['direct' 'news' 'social']
+    classification_labels = model.predict(pd.DataFrame(data={'message': [query], 'genre': [genre]}))[0]
     classification_results = dict(zip(df.columns[4:], classification_labels))
 
     # This will render the go.html Please see that file. 
     return render_template(
         'go.html',
         query=query,
+        genre=genre,
+        genres=genres,
         classification_result=classification_results
     )
 

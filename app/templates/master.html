@@ -12,7 +12,10 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
-
+<style>
+    .select-group input.form-control{ width: 65%}
+    .select-group select.input-group-addon { width: 35%; }
+</style>
 <body>
 
 <nav class="navbar navbar-inverse navbar-fixed-top">
@@ -37,9 +40,17 @@
         <hr />
       
         <div class="row">
-            <div class="col-lg-12 form-group-lg">
+            <div class="col-lg-12">
                 <form action="/go" method="get">
-                    <input type="text" class="form-control form-control-lg" name="query" placeholder="Enter a message to classify">
+                    <div class="input-group input-group-lg select-group col-lg-12">
+                        <input type="text" class="form-control" name="query" placeholder="Enter a message to classify">
+                        <select name="genre" class="form-control input-group-addon" method="GET" action="/">
+                            <option value="{{genres[0]}}" selected>{{genres[0]}}</option>
+                            {% for genre in genres[1:] %}
+                            <option value="{{genre}}">{{genre}}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                     <div class="col-lg-offset-5">
                         <button type="submit" class="btn btn-lg btn-success">Classify Message</button>
                     </div>
