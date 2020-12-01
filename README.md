@@ -36,8 +36,9 @@ I implemented this project as part of the Udacity nanodegree in Datascience and 
 3. Go to http://localhost:3001/
 
 
-## Results
-- 
+## Screenshots
+![Overview](/screens/screenshot_overview.png)
+![Results](/screens/screenshot_result.png)
 
 ## Files
 File | Description
