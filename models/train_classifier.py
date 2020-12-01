@@ -30,6 +30,15 @@ email_regex = '(?:[a-z0-9!#$%&\'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&\'*+/=?^_`{|}~-]
 stop_words = stopwords.words("english")
 
 def tokenize(text):
+    '''
+    INPUT
+    text - String of text
+
+    OUTPUT
+    clean_tokens - Array with clean tokens
+
+    Normalize and tokenize distaster messages
+    '''
     #print("tokenize: {}".format(text))
     detected_urls = re.findall(url_regex, text)
     for url in detected_urls:
@@ -53,6 +62,18 @@ def tokenize(text):
     return clean_tokens
 
 def load_data(database_filepath):
+    '''
+    INPUT
+    database_filepath - Path to sqlite db file
+
+    OUTPUT
+    X - DataFrame with disaster messages
+    Y - Array with message categories
+    categories - names of categories
+
+    Load disaster messages from sqlite db
+    '''
+
     # load data from database
     engine = create_engine('sqlite:///{}'.format(database_filepath))
     print(pd.read_sql('SELECT name FROM sqlite_master WHERE type =\'table\'', engine))
@@ -67,25 +88,13 @@ def load_data(database_filepath):
     Y = Y_df.values
     return X, Y, Y_df.columns
 
-
-#class StartingVerbExtractor(BaseEstimator, TransformerMixin):
-#    def starting_verb(self, text):
-#        sentence_list = nltk.sent_tokenize(text)
-#        for sentence in sentence_list:
-#            pos_tags = nltk.pos_tag(tokenize(sentence))
-#            first_word, first_tag = pos_tags[0]
-#            if first_tag in ['VB', 'VBP'] or first_word == 'RT':
-#                return True
-#        return False
-#
-#    def fit(self, x, y=None):
-#        return self
-#
-#    def transform(self, X):
-#        X_tagged = pd.Series(X).apply(self.starting_verb)
-#        return pd.DataFrame(X_tagged)
-
 def build_model():
+    '''
+    OUTPUT
+    model - Transformer model
+
+    Build transformer model based on TfidfTransformer wrapped in a multi-process GridSearchCV
+    '''
 
     # Classifier Testing (Classifier: TestSize / Accuracy)
     # 
@@ -96,12 +105,9 @@ def build_model():
     # LinearSVC:                    0.2 / 0.949
     pipeline = Pipeline([
         ('ctf', ColumnTransformer(transformers=[
-            ('message_feat', FeatureUnion([
-                ('text_pipeline', Pipeline([
-                    ('vect', CountVectorizer(tokenizer=tokenize)),
-                    ('tfidf', TfidfTransformer())
-                ])),
-#                ('starting_verb', StartingVerbExtractor())
+            ('text_pipeline', Pipeline([
+                ('vect', CountVectorizer(tokenizer=tokenize)),
+                ('tfidf', TfidfTransformer())
             ]), 'message'),
             ('genre_cat', OneHotEncoder(dtype='int'), ['genre']),
         ])),
@@ -110,78 +116,64 @@ def build_model():
 #        ('clf', MultiOutputClassifier(GradientBoostingClassifier(random_state = 314159)))
     ])
 
-
-
-    # test_size: 0.95
-    #parameters = {
-    #    'features__text_pipeline__vect__ngram_range': ((1, 1), (1, 2)), # Best: (1, 2), Default: (1, 1)
-    #    'features__text_pipeline__vect__max_df': (0.5, 1.0), # Best: 0.5, Default: 1.0
-    #    'features__text_pipeline__vect__max_features': (None, 5000), # Best: None, Default: None
-    #    'features__text_pipeline__tfidf__use_idf': (True, False), # Best: True, Default: Treu
-    #    'clf__estimator__n_estimators': [50, 100], # Best: 50, Default: 100
-    #    'clf__estimator__min_samples_split': [2, 4], # Best: 2, Default: 2
-    #    'features__transformer_weights': (
-    #        {'text_pipeline': 1, 'starting_verb': 0.0}, # Best
-    #        {'text_pipeline': 1, 'starting_verb': 0.5},
-    #        {'text_pipeline': 0.8, 'starting_verb': 1},
-    #    )
-    #}
-
-    # test_size: 0.95
-    #parameters = {
-    #    'features__text_pipeline__vect__ngram_range': ((1, 2), ),
-    #    'features__text_pipeline__vect__max_df': (0.5, ), 
-    #    'features__text_pipeline__vect__max_features': (None, ),
-    #    'features__text_pipeline__tfidf__use_idf': (True, ),
-    #    'clf__estimator__n_estimators': (10, 30, 50, 70), # Best: 30, Default: 100
-    #    'clf__estimator__min_samples_split': (2, )
-    #}
-
     parameters_full = {
-        'ctf__message_feat__text_pipeline__vect__max_df': (0.5, 1.0), # Best: 0.5, Default: 1.0
-        'ctf__message_feat__text_pipeline__vect__ngram_range': ((1, 2), (1, 1)), # Best: (1, 2), Default: (1, 1)
-        'ctf__message_feat__text_pipeline__vect__max_features': (None, 5000), # Best: None, Default: None
-        'ctf__message_feat__text_pipeline__tfidf__use_idf': (True, False), # Best: True, Default: True
+        'ctf__text_pipeline__vect__max_df': (0.5, 1.0), # Best: 0.5, Default: 1.0
+        'ctf__text_pipeline__vect__ngram_range': ((1, 2), (1, 1)), # Best: (1, 2), Default: (1, 1)
+        'ctf__text_pipeline__vect__max_features': (None, 5000), # Best: None, Default: None
+        'ctf__text_pipeline__tfidf__use_idf': (True, False), # Best: True, Default: True
         'clf__estimator__n_estimators': (30, 50, 100), # Best: 50, Default: 100
         'clf__estimator__min_samples_split': (2, 4), # Best: 2, Default: 2
         'ctf__transformer_weights': (
-            {'message_feat': 1.0, 'genre_cat': 0.0}, # Best -> genre_cat not needed
-            {'message_feat': 1.0, 'genre_cat': 0.5},
-            {'message_feat': 1.0, 'genre_cat': 1.0},
-            {'message_feat': 0.5, 'genre_cat': 1.0},
-            {'message_feat': 0.0, 'genre_cat': 1.0},
+            {'text_pipeline': 1.0, 'genre_cat': 0.0}, # Best -> genre_cat not needed
+            {'text_pipeline': 1.0, 'genre_cat': 0.5},
+            {'text_pipeline': 1.0, 'genre_cat': 1.0},
+            {'text_pipeline': 0.5, 'genre_cat': 1.0},
+            {'messatext_pipelinege_feat': 0.0, 'genre_cat': 1.0},
         ),
-        'ctf__message_feat__transformer_weights': (
-            {'text_pipeline': 1, 'starting_verb': 0.0}, # Best -> starting_verb not needed
-            {'text_pipeline': 1, 'starting_verb': 0.5},
-            {'text_pipeline': 0.8, 'starting_verb': 1},
-        )
     }
 
     parameters = {
-        'ctf__message_feat__text_pipeline__vect__max_df': (0.5, ), # Best: 0.5, Default: 1.0
-        'ctf__message_feat__text_pipeline__vect__ngram_range': ((1, 2), ), # Best: (1, 2), Default: (1, 1)
-        'ctf__message_feat__text_pipeline__vect__max_features': (None, ), # Best: None, Default: None
-        'ctf__message_feat__text_pipeline__tfidf__use_idf': (True, ), # Best: True, Default: True
+        'ctf__text_pipeline__vect__max_df': (0.5, ), # Best: 0.5, Default: 1.0
+        'ctf__text_pipeline__vect__ngram_range': ((1, 2), ), # Best: (1, 2), Default: (1, 1)
+        'ctf__text_pipeline__vect__max_features': (None, ), # Best: None, Default: None
+        'ctf__text_pipeline__tfidf__use_idf': (True, ), # Best: True, Default: True
 #        'clf__estimator__n_estimators': (50, ), # Best: 50, Default: 100
 #        'clf__estimator__min_samples_split': (2, ), # Best: 2, Default: 2
         'ctf__transformer_weights': (
-            {'message_feat': 1.0, 'genre_cat': 0.0}, # Best
+            {'text_pipeline': 1.00, 'genre_cat': 0.00},
+            {'text_pipeline': 0.90, 'genre_cat': 0.10},
+            {'text_pipeline': 0.90, 'genre_cat': 0.15},
+            {'text_pipeline': 0.80, 'genre_cat': 0.20}, # Best
+            {'text_pipeline': 0.75, 'genre_cat': 0.25},
         ),
-#        'ctf__message_feat__transformer_weights': (
-#            {'text_pipeline': 1, 'starting_verb': 0.0}, # Best
-#        )
     }
-
-
-
     cv = GridSearchCV(pipeline, param_grid=parameters, n_jobs=-1, verbose=2)
     return cv
 
 def column(matrix, i):
+    '''
+    INPUT
+    matrix - the matrix
+    i - the row to extract
+
+    OUTPUT
+    row - extracted row as an array
+
+    Extract a column of elements from a matrix
+    '''
     return [row[i] for row in matrix]
 
+
 def evaluate_model(model, X_test, Y_test, category_names):
+    '''
+    INPUT
+    model - Transformer model to evaluate
+    X_test - DataFrame with disaster messages for evaluation
+    Y_test - Array with categories
+    category_names - 
+
+    Evaluate model and print accuracy and classification reports for every category
+    '''
     Y_pred = model.predict(X_test)
 
     #confusion_mat = confusion_matrix(Y_test, Y_pred, labels=labels)
@@ -198,11 +190,21 @@ def evaluate_model(model, X_test, Y_test, category_names):
 
 
 def save_model(model, model_filepath):
+    '''
+    INPUT
+    model - Transformer model to save
+    model_filepath - File path of the output file
+
+    Dump model to file with pickle.
+    '''
     f = open(model_filepath, 'wb')
     pickle.dump(model, f)
     f.close()
 
 def main():
+    '''
+    ML pipeline that trains classifier and saves model to pickle file
+    '''
     if len(sys.argv) == 3:
         database_filepath, model_filepath = sys.argv[1:]
         print('Loading data...\n    DATABASE: {}'.format(database_filepath))

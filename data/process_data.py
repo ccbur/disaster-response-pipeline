@@ -3,6 +3,16 @@ import pandas as pd
 from sqlalchemy import create_engine
 
 def load_data(messages_filepath, categories_filepath):
+    '''
+    INPUT
+    messages_filepath - Path zu CSV file with disaster messages
+    categories_filepath - Path zu CSV file with message categorization
+
+    OUTPUT
+    df - DataFrame with categorized disaster messages
+
+    Load disaster messages and categorization from CSV files
+    '''
     # load messages dataset
     messages = pd.read_csv(messages_filepath)
     print(messages.head())
@@ -17,6 +27,15 @@ def load_data(messages_filepath, categories_filepath):
     return df
 
 def clean_data(df):
+    '''
+    INPUT
+    df - DataFrame with categorized disaster messages
+
+    OUTPUT
+    df - DataFrame with cleaned disaster messages
+
+    Clean disaster messages
+    '''
     # create a dataframe of the 36 individual category columns
     categories = df['categories'].str.split(';', expand=True)
     categories.head()
@@ -67,11 +86,25 @@ def clean_data(df):
     return df
 
 def save_data(df, database_filename):
+    '''
+    INPUT
+    df - DataFrame with categorized disaster messages
+    database_filename - Path to sqllite db file
+
+    OUTPUT
+    df - DataFrame with cleaned disaster messages
+
+    Save disaster messages to sqlite db file
+    '''
     engine = create_engine('sqlite:///{}'.format(database_filename))
     df.to_sql('Message', engine, index=False, if_exists='replace')
 
 
 def main():
+    '''
+    ETL pipeline that cleans data and stores in database
+    '''
+
     if len(sys.argv) == 4:
 
         messages_filepath, categories_filepath, database_filepath = sys.argv[1:]
